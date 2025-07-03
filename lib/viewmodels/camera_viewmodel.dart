@@ -46,7 +46,7 @@ class CameraViewModel extends ChangeNotifier {
       } catch (e) {
         print('Error: $e');
         _analysis = null;
-        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
         notifyListeners();
 
         // Espera el intervalo antes de reintentar

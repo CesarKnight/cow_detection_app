@@ -35,7 +35,7 @@ class BackendService {
     } on SocketException {
       throw Exception('Error: sin conexión al servidor');
     } catch (e) {
-      throw Exception('Error inesperado: $e');
+      throw Exception('$e');
     }
   }
 }
