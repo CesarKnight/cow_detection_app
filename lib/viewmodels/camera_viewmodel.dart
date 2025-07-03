@@ -10,14 +10,16 @@ import '../config.dart';
 class CameraViewModel extends ChangeNotifier {
   ImageAnalysisResponse? _analysis;
   String? _errorMessage;
-  bool _isDetecting = false; // nuevo flag
+  bool _isDetecting = false;
+  bool _showCameraFlash = false; // nuevo
 
   ImageAnalysisResponse? get analysis => _analysis;
   String? get errorMessage => _errorMessage;
   bool get isDetecting => _isDetecting;
+  bool get showCameraFlash => _showCameraFlash; // nuevo
 
   Future<void> startDetection(Future<File> Function() takePicture) async {
-    if (_isDetecting) return; // evita iniciar dos veces
+    if (_isDetecting) return;
     _isDetecting = true;
     _errorMessage = null;
     _analysis = null;
@@ -29,6 +31,12 @@ class CameraViewModel extends ChangeNotifier {
   Future<void> _detectionLoop(Future<File> Function() takePicture) async {
     while (_isDetecting) {
       try {
+        _showCameraFlash = true;
+        notifyListeners();
+        await Future.delayed(Duration(milliseconds: AppConfig.cameraFlashDurationMs));
+        _showCameraFlash = false;
+        notifyListeners();
+        
         final file = await takePicture();
         final directory = await getTemporaryDirectory();
         final tempImage = await file.copy(
@@ -37,7 +45,6 @@ class CameraViewModel extends ChangeNotifier {
 
         final response = await BackendService.analyzeImage(tempImage);
 
-        // Si obtenemos respuesta exitosa, guardamos y paramos
         _analysis = response;
         _errorMessage = null;
         _isDetecting = false;

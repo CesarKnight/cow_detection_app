@@ -2,8 +2,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:camera/camera.dart';
+
 import '../viewmodels/camera_viewmodel.dart';
 import '../widgets/breed_draggable.dart';
+import '../widgets/detection_status_label.dart';
 
 class CameraPage extends StatelessWidget {
   final CameraDescription camera;
@@ -108,6 +110,7 @@ class _CameraViewBodyState extends State<CameraViewBody> {
                         ),
                       ),
                     ),
+                    DetectionStatusLabel(viewModel: viewModel),
                     DetectionControlSheet(
                       viewModel: viewModel,
                       initialChildSize: remainingFraction,
