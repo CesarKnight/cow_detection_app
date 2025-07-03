@@ -1,29 +1,35 @@
-import 'dart:async';
 import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:camera/camera.dart';
-import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
 
-import '../services/backend_service.dart';
-import '../models/image_analysis_response.dart';
-import '../config.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:camera/camera.dart';
+import '../viewmodels/camera_viewmodel.dart';
 import '../widgets/breed_overlay.dart';
 
-class CameraPage extends StatefulWidget {
+class CameraPage extends StatelessWidget {
   final CameraDescription camera;
   const CameraPage({required this.camera});
 
   @override
-  State<CameraPage> createState() => _CameraPageState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => CameraViewModel(),
+      child: CameraViewBody(camera: camera),
+    );
+  }
 }
 
-class _CameraPageState extends State<CameraPage> {
+class CameraViewBody extends StatefulWidget {
+  final CameraDescription camera;
+  const CameraViewBody({required this.camera});
+
+  @override
+  State<CameraViewBody> createState() => _CameraViewBodyState();
+}
+
+class _CameraViewBodyState extends State<CameraViewBody> {
   late CameraController _controller;
   late Future<void> _initializeControllerFuture;
-  Timer? _timer;
-  ImageAnalysisResponse? _analysis;
-  String? _errorMessage;
 
   @override
   void initState() {
@@ -34,48 +40,20 @@ class _CameraPageState extends State<CameraPage> {
 
   @override
   void dispose() {
-    _timer?.cancel();
     _controller.dispose();
     super.dispose();
   }
 
-  void _startDetection() {
-  _timer = Timer.periodic(
-    Duration(seconds: AppConfig.captureIntervalSeconds),
-    (timer) async {
-      try {
-        await _initializeControllerFuture;
-
-        final image = await _controller.takePicture();
-        final directory = await getTemporaryDirectory();
-        final tempImage = await File(image.path).copy(
-          path.join(directory.path, '${DateTime.now().millisecondsSinceEpoch}.jpg'));
-
-        final response = await BackendService.analyzeImage(tempImage);
-
-        setState(() {
-          _analysis = response;
-          _errorMessage = null;  // Limpiamos error si antes hubo
-        });
-      } catch (e) {
-        print('Error capturando o enviando: $e');
-        setState(() {
-          _analysis = null;
-          _errorMessage = e.toString().replaceFirst('Exception: ', '');
-        });
-      }
-    });
-}
-
-  void _stopDetection() {
-    _timer?.cancel();
-    setState(() {
-      _analysis = null;
-    });
+  Future<File> _takePicture() async {
+    await _initializeControllerFuture;
+    final image = await _controller.takePicture();
+    return File(image.path);
   }
 
   @override
   Widget build(BuildContext context) {
+    final viewModel = Provider.of<CameraViewModel>(context);
+
     return Scaffold(
       appBar: AppBar(title: Text('Detectar raza de vaca')),
       body: FutureBuilder<void>(
@@ -86,8 +64,8 @@ class _CameraPageState extends State<CameraPage> {
               children: [
                 CameraPreview(_controller),
                 BreedOverlay(
-                  analysis: _analysis,
-                  errorMessage: _errorMessage,
+                  analysis: viewModel.analysis,
+                  errorMessage: viewModel.errorMessage,
                 ),
               ],
             );
@@ -101,14 +79,16 @@ class _CameraPageState extends State<CameraPage> {
         children: [
           FloatingActionButton(
             heroTag: 'start',
-            onPressed: _startDetection,
+            onPressed: () {
+              viewModel.startDetection(_takePicture);
+            },
             child: Icon(Icons.play_arrow),
             tooltip: 'Iniciar detección',
           ),
           SizedBox(width: 10),
           FloatingActionButton(
             heroTag: 'stop',
-            onPressed: _stopDetection,
+            onPressed: viewModel.stopDetection,
             child: Icon(Icons.stop),
             tooltip: 'Detener detección',
           ),
