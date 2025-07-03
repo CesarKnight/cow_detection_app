@@ -1,26 +1,19 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import '../config.dart';
 import '../models/image_analyze_request.dart';
 import '../models/image_analysis_response.dart';
 
 class BackendService {
-  static Future<ImageAnalysisResponse> detectBreed(File imageFile) async {
+  static Future<ImageAnalysisResponse?> analyzeImage(File imageFile) async {
     try {
-      // Lee la imagen como bytes y conviértela a base64
       final bytes = await imageFile.readAsBytes();
       final base64Image = base64Encode(bytes);
 
-      // Construye el request model
-      final requestModel = ImageAnalyzeRequest(
-        base64_image: base64Image
-      );
+      final requestModel = ImageAnalyzeRequest(base64_image: base64Image);
 
-      print(requestModel.toJson());
-      
-      // Envía la petición POST con JSON
       final response = await http.post(
         Uri.parse(AppConfig.backendUrl),
         headers: {'Content-Type': 'application/json'},
@@ -30,6 +23,10 @@ class BackendService {
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
         return ImageAnalysisResponse.fromJson(decoded);
+      } else if (response.statusCode == 406) {
+        final decoded = jsonDecode(response.body);
+        final detail = decoded['detail'] ?? 'Vobino no encontrado en la imagen';
+        throw Exception(detail);
       } else {
         throw Exception('Error del servidor: ${response.statusCode}');
       }

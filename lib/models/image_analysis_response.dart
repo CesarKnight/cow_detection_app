@@ -4,14 +4,22 @@ part 'image_analysis_response.g.dart';
 
 @JsonSerializable()
 class ImageAnalysisResponse {
-  final String analysis;
   final String status;
+  final String breed;
+  final double confidence;
+  final int weight;
+  final String origin;
   final DateTime timestamp;
+  final String visualization;
 
   ImageAnalysisResponse({
-    required this.analysis,
     required this.status,
+    required this.breed,
+    required this.confidence,
+    required this.weight,
+    required this.origin,
     required this.timestamp,
+    required this.visualization,
   });
 
   factory ImageAnalysisResponse.fromJson(Map<String, dynamic> json) =>

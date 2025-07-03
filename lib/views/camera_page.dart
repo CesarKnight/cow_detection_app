@@ -4,13 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
+
 import '../services/backend_service.dart';
-import '../widgets/breed_overlay.dart';
+import '../models/image_analysis_response.dart';
 import '../config.dart';
+import '../widgets/breed_overlay.dart';
 
 class CameraPage extends StatefulWidget {
   final CameraDescription camera;
-  const CameraPage({super.key, required this.camera});
+  const CameraPage({required this.camera});
 
   @override
   State<CameraPage> createState() => _CameraPageState();
@@ -20,7 +22,8 @@ class _CameraPageState extends State<CameraPage> {
   late CameraController _controller;
   late Future<void> _initializeControllerFuture;
   Timer? _timer;
-  String? _breedDetected;
+  ImageAnalysisResponse? _analysis;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -37,36 +40,37 @@ class _CameraPageState extends State<CameraPage> {
   }
 
   void _startDetection() {
-    _timer = Timer.periodic(Duration(seconds: AppConfig.captureIntervalSeconds), (timer) async {
+  _timer = Timer.periodic(
+    Duration(seconds: AppConfig.captureIntervalSeconds),
+    (timer) async {
       try {
         await _initializeControllerFuture;
 
         final image = await _controller.takePicture();
-
-        // Guarda temporalmente (opcional)
         final directory = await getTemporaryDirectory();
         final tempImage = await File(image.path).copy(
           path.join(directory.path, '${DateTime.now().millisecondsSinceEpoch}.jpg'));
 
-        // Llama al backend (ahora pasando el File)
-        final response = await BackendService.detectBreed(tempImage);
+        final response = await BackendService.analyzeImage(tempImage);
 
         setState(() {
-          _breedDetected = response.analysis;
+          _analysis = response;
+          _errorMessage = null;  // Limpiamos error si antes hubo
         });
       } catch (e) {
         print('Error capturando o enviando: $e');
         setState(() {
-          _breedDetected = 'Error: $e';
+          _analysis = null;
+          _errorMessage = e.toString().replaceFirst('Exception: ', '');
         });
       }
     });
-  }
+}
 
   void _stopDetection() {
     _timer?.cancel();
     setState(() {
-      _breedDetected = null;
+      _analysis = null;
     });
   }
 
@@ -81,8 +85,10 @@ class _CameraPageState extends State<CameraPage> {
             return Stack(
               children: [
                 CameraPreview(_controller),
-                if (_breedDetected != null)
-                  BreedOverlay(breed: _breedDetected!)
+                BreedOverlay(
+                  analysis: _analysis,
+                  errorMessage: _errorMessage,
+                ),
               ],
             );
           } else {
