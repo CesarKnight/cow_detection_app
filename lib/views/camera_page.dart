@@ -56,13 +56,23 @@ class _CameraViewBodyState extends State<CameraViewBody> {
 
     return Scaffold(
       appBar: AppBar(title: Text('Detectar raza de vaca')),
+      backgroundColor: Colors.black,
       body: FutureBuilder<void>(
         future: _initializeControllerFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
             return Stack(
               children: [
-                CameraPreview(_controller),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black, // color de fondo si la cámara tarda
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: CameraPreview(_controller),
+                  ),
+                ),
                 BreedOverlay(
                   analysis: viewModel.analysis,
                   errorMessage: viewModel.errorMessage,

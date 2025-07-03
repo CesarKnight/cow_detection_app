@@ -1,4 +1,5 @@
-  import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:flutter/material.dart';
 import '../models/image_analysis_response.dart';
 
 class BreedOverlay extends StatelessWidget {
@@ -47,7 +48,11 @@ class BreedOverlay extends StatelessWidget {
               Text('Origen: ${analysis!.origin}', style: TextStyle(color: Colors.white)),
               SizedBox(height: 4),
               if (analysis!.visualization.isNotEmpty)
-                Image.network(analysis!.visualization, height: 100, fit: BoxFit.cover),
+                Image.memory(
+                  base64Decode(analysis!.visualization),
+                  height: 100,
+                  fit: BoxFit.cover,
+                ),
             ],
           ),
         ),
