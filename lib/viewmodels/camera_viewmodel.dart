@@ -10,39 +10,53 @@ import '../config.dart';
 class CameraViewModel extends ChangeNotifier {
   ImageAnalysisResponse? _analysis;
   String? _errorMessage;
-  Timer? _timer;
+  bool _isDetecting = false; // nuevo flag
 
   ImageAnalysisResponse? get analysis => _analysis;
   String? get errorMessage => _errorMessage;
+  bool get isDetecting => _isDetecting;
 
   Future<void> startDetection(Future<File> Function() takePicture) async {
-    _timer = Timer.periodic(
-      Duration(seconds: AppConfig.captureIntervalSeconds),
-      (timer) async {
-        try {
-          final file = await takePicture();
+    if (_isDetecting) return; // evita iniciar dos veces
+    _isDetecting = true;
+    _errorMessage = null;
+    _analysis = null;
+    notifyListeners();
 
-          final directory = await getTemporaryDirectory();
-          final tempImage = await file.copy(
-            path.join(directory.path, '${DateTime.now().millisecondsSinceEpoch}.jpg'));
+    await _detectionLoop(takePicture);
+  }
 
-          final response = await BackendService.analyzeImage(tempImage);
-  
-          _analysis = response;
-          _errorMessage = null;
-          notifyListeners();
-        } catch (e) {
-          print('Error: $e');
-          _analysis = null;
-          _errorMessage = e.toString().replaceFirst('Exception: ', '');
-          notifyListeners();
-        }
-      },
-    );
+  Future<void> _detectionLoop(Future<File> Function() takePicture) async {
+    while (_isDetecting) {
+      try {
+        final file = await takePicture();
+        final directory = await getTemporaryDirectory();
+        final tempImage = await file.copy(
+          path.join(directory.path, '${DateTime.now().millisecondsSinceEpoch}.jpg'),
+        );
+
+        final response = await BackendService.analyzeImage(tempImage);
+
+        // Si obtenemos respuesta exitosa, guardamos y paramos
+        _analysis = response;
+        _errorMessage = null;
+        _isDetecting = false;
+        notifyListeners();
+        break;
+      } catch (e) {
+        print('Error: $e');
+        _analysis = null;
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        notifyListeners();
+
+        // Espera el intervalo antes de reintentar
+        await Future.delayed(Duration(seconds: AppConfig.captureIntervalSeconds));
+      }
+    }
   }
 
   void stopDetection() {
-    _timer?.cancel();
+    _isDetecting = false;
     _analysis = null;
     _errorMessage = null;
     notifyListeners();
